@@ -1,0 +1,16 @@
+[
+{
+  "modid": "steammotion",
+  "name": "Steam Motion",
+  "description": "Steam Motion Mod",
+  "version": "${version}",
+  "mcversion": "${mcversion}",
+  "url": "",
+  "updateUrl": "",
+  "authorList": ["jf908"],
+  "credits": "jf908",
+  "logoFile": "",
+  "screenshots": [],
+  "dependencies": []
+}
+]
