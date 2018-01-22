@@ -1,5 +1,6 @@
 package com.xyfero.steammotion.item;
 
+import com.xyfero.steammotion.entity.EntityHook;
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.item.ItemStack;
 import net.minecraft.util.ActionResult;
@@ -14,6 +15,11 @@ public class ItemHook extends SteamMotionItem {
 
     public ActionResult<ItemStack> onItemRightClick(World world, EntityPlayer player, EnumHand hand) {
         ItemStack itemstack = player.getHeldItem(hand);
+
+        if(!world.isRemote) {
+            EntityHook entity = new EntityHook(world, player);
+            world.spawnEntity(entity);
+        }
 
         return new ActionResult<ItemStack>(EnumActionResult.SUCCESS, itemstack);
     }
