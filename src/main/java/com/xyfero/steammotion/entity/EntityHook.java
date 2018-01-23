@@ -1,19 +1,27 @@
 package com.xyfero.steammotion.entity;
 
+import com.google.common.base.Optional;
 import com.xyfero.steammotion.SteamMotion;
 import com.xyfero.steammotion.item.ItemHook;
 import com.xyfero.steammotion.item.SteamMotionItem;
+import net.minecraft.client.Minecraft;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.item.ItemStack;
 import net.minecraft.nbt.NBTTagCompound;
+import net.minecraft.network.datasync.DataParameter;
+import net.minecraft.network.datasync.DataSerializers;
+import net.minecraft.network.datasync.EntityDataManager;
 import net.minecraft.util.math.Vec3d;
 import net.minecraft.world.World;
+
+import java.util.UUID;
 
 public class EntityHook extends Entity {
 
     private EntityPlayer shooter;
 
+    private static final DataParameter<Optional<UUID>> PLAYER = EntityDataManager.createKey(EntityHook.class, DataSerializers.OPTIONAL_UNIQUE_ID);
     private int ticks;
     private boolean fixed;
 
@@ -21,9 +29,17 @@ public class EntityHook extends Entity {
         super(world);
     }
 
+    /**
+     * Assumed to be only called by the server
+     *
+     * @param world
+     * @param player
+     */
     public EntityHook(World world, EntityPlayer player) {
         super(world);
         shooter = player;
+
+        dataManager.set(PLAYER, Optional.of(player.getUniqueID()));
 
         shoot();
     }
@@ -33,23 +49,34 @@ public class EntityHook extends Entity {
 
         Vec3d vec = shooter.getLookVec();
         setLocationAndAngles(shooter.posX, shooter.posY, shooter.posZ, shooter.cameraYaw, shooter.cameraPitch);
-//        motionX = vec.x;
-//        motionY = vec.y;
-//        motionZ = vec.z;
+
+        motionX = vec.x;
+        motionY = vec.y;
+        motionZ = vec.z;
+        velocityChanged = true;
     }
 
     protected void entityInit() {
-//        this.getDataManager().register(DATA_HOOKED_ENTITY, Integer.valueOf(0));
+        dataManager.register(PLAYER, Optional.absent());
     }
 
     public void onUpdate() {
         super.onUpdate();
 
-        System.out.println("hello");
-
         if(shooter == null) {
-            setDead();
-            return;
+            if(world.isRemote) {
+                UUID id = dataManager.get(PLAYER).orNull();
+                if(id == null) {
+                    return;
+                }
+                Entity entity = world.getPlayerEntityByUUID(id);
+                if(entity != null && entity instanceof EntityPlayer) {
+                    shooter = (EntityPlayer)entity;
+                }
+            } else {
+                setDead();
+                return;
+            }
         }
 
         if(shouldStopHooking()) return;
@@ -58,11 +85,12 @@ public class EntityHook extends Entity {
         if(ticks > 1000) {
             setDead();
         }
-//        if(fixed) {
-//
-//        } else {
-//
-//        }
+
+        Vec3d vec = shooter.getLookVec();
+        motionX = vec.x;
+        motionY = vec.y;
+        motionZ = vec.z;
+        velocityChanged = true;
     }
 
     private boolean shouldStopHooking() {

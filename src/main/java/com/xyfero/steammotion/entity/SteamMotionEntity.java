@@ -21,7 +21,7 @@ public class SteamMotionEntity {
                     .entity(EntityHook.class)
                     .id(registryName, id++)
                     .name(registryName.toString())
-                    .tracker(64, 20, false)
+                    .tracker(64, 20, true)
                     .build();
 
             event.getRegistry().register(entry);
