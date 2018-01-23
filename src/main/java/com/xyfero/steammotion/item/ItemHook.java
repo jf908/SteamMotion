@@ -19,7 +19,10 @@ public class ItemHook extends SteamMotionItem {
         if(!world.isRemote) {
             EntityHook entity = new EntityHook(world, player);
             world.spawnEntity(entity);
+            System.out.println("spawning...");
         }
+
+        player.swingArm(hand);
 
         return new ActionResult<ItemStack>(EnumActionResult.SUCCESS, itemstack);
     }

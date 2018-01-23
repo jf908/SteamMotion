@@ -24,12 +24,18 @@ public class EntityHook extends Entity {
     public EntityHook(World world, EntityPlayer player) {
         super(world);
         shooter = player;
+
+        shoot();
     }
 
     private void shoot() {
         if(shooter == null) return;
 
         Vec3d vec = shooter.getLookVec();
+        setLocationAndAngles(shooter.posX, shooter.posY, shooter.posZ, shooter.cameraYaw, shooter.cameraPitch);
+//        motionX = vec.x;
+//        motionY = vec.y;
+//        motionZ = vec.z;
     }
 
     protected void entityInit() {
@@ -38,6 +44,13 @@ public class EntityHook extends Entity {
 
     public void onUpdate() {
         super.onUpdate();
+
+        System.out.println("hello");
+
+        if(shooter == null) {
+            setDead();
+            return;
+        }
 
         if(shouldStopHooking()) return;
 
@@ -58,12 +71,18 @@ public class EntityHook extends Entity {
         boolean flag = itemstack.getItem() instanceof ItemHook;
         boolean flag2 = itemstack2.getItem() instanceof ItemHook;
 
-        if (shooter != null && !shooter.isDead && shooter.isEntityAlive() && (flag || flag2) && getDistanceSq(shooter) <= 1024.0D) {
+        if (!shooter.isDead && shooter.isEntityAlive() && (flag || flag2) && getDistanceSq(shooter) <= 1024.0D) {
             return false;
         } else {
             setDead();
             return true;
         }
+    }
+
+    @Override
+    public void setDead() {
+        System.out.println("dead!");
+        this.isDead = true;
     }
 
     protected boolean canTriggerWalking()
@@ -83,5 +102,9 @@ public class EntityHook extends Entity {
      */
     public void readEntityFromNBT(NBTTagCompound compound)
     {
+    }
+
+    public EntityPlayer getShooter() {
+        return shooter;
     }
 }
