@@ -1,27 +1,25 @@
 package com.xyfero.steammotion.entity;
 
 import com.google.common.base.Optional;
-import com.xyfero.steammotion.SteamMotion;
 import com.xyfero.steammotion.item.ItemHook;
-import com.xyfero.steammotion.item.SteamMotionItem;
-import net.minecraft.client.Minecraft;
-import net.minecraft.entity.Entity;
+import net.minecraft.entity.EntityLivingBase;
 import net.minecraft.entity.player.EntityPlayer;
+import net.minecraft.entity.projectile.EntityThrowable;
 import net.minecraft.item.ItemStack;
-import net.minecraft.nbt.NBTTagCompound;
 import net.minecraft.network.datasync.DataParameter;
 import net.minecraft.network.datasync.DataSerializers;
 import net.minecraft.network.datasync.EntityDataManager;
+import net.minecraft.util.math.RayTraceResult;
 import net.minecraft.util.math.Vec3d;
 import net.minecraft.world.World;
 
 import java.util.UUID;
 
-public class EntityHook extends Entity {
+public class EntityHook extends EntityThrowable {
 
-    private EntityPlayer shooter;
+//    private EntityPlayer shooter;
 
-    private static final DataParameter<Optional<UUID>> PLAYER = EntityDataManager.createKey(EntityHook.class, DataSerializers.OPTIONAL_UNIQUE_ID);
+    private static final DataParameter<Optional<UUID>> SHOOTER = EntityDataManager.createKey(EntityHook.class, DataSerializers.OPTIONAL_UNIQUE_ID);
     private int ticks;
     private boolean fixed;
 
@@ -36,70 +34,106 @@ public class EntityHook extends Entity {
      * @param player
      */
     public EntityHook(World world, EntityPlayer player) {
-        super(world);
-        shooter = player;
+        super(world, player);
 
-        dataManager.set(PLAYER, Optional.of(player.getUniqueID()));
-
-        shoot();
+        dataManager.set(SHOOTER, Optional.of(player.getUniqueID()));
     }
 
-    private void shoot() {
-        if(shooter == null) return;
-
-        Vec3d vec = shooter.getLookVec();
-        setLocationAndAngles(shooter.posX, shooter.posY, shooter.posZ, shooter.cameraYaw, shooter.cameraPitch);
-
-        motionX = vec.x;
-        motionY = vec.y;
-        motionZ = vec.z;
-        velocityChanged = true;
-    }
+//    private void shoot() {
+//        if(shooter == null) return;
+//
+//        Vec3d vec = shooter.getLookVec();
+//        setLocationAndAngles(shooter.posX, shooter.posY, shooter.posZ, shooter.cameraYaw, shooter.cameraPitch);
+//
+//        motionX = vec.x;
+//        motionY = vec.y;
+//        motionZ = vec.z;
+//        velocityChanged = true;
+//    }
 
     protected void entityInit() {
-        dataManager.register(PLAYER, Optional.absent());
+        dataManager.register(SHOOTER, Optional.absent());
     }
 
     public void onUpdate() {
         super.onUpdate();
 
-        if(shooter == null) {
-            if(world.isRemote) {
-                UUID id = dataManager.get(PLAYER).orNull();
-                if(id == null) {
-                    return;
-                }
-                Entity entity = world.getPlayerEntityByUUID(id);
-                if(entity != null && entity instanceof EntityPlayer) {
-                    shooter = (EntityPlayer)entity;
-                }
-            } else {
+        EntityLivingBase thrower = getThrower();
+        if(thrower == null) {
+            if(!world.isRemote) {
+                setDead();
+            }
+            return;
+        }
+
+        if(shouldStopHooking(thrower)) return;
+
+        if(fixed) {
+            if(thrower.getPositionVector().distanceTo(getPositionVector()) < 1) {
                 setDead();
                 return;
             }
+
+            motionX = 0;
+            motionY = 0;
+            motionZ = 0;
+
+            movePlayer();
+        } else {
+            Vec3d vec = thrower.getLookVec();
+            motionX = vec.x;
+            motionY = vec.y;
+            motionZ = vec.z;
         }
 
-        if(shouldStopHooking()) return;
-
-        ticks++;
-        if(ticks > 1000) {
-            setDead();
-        }
-
-        Vec3d vec = shooter.getLookVec();
-        motionX = vec.x;
-        motionY = vec.y;
-        motionZ = vec.z;
-        velocityChanged = true;
+//        if(shooter == null) {
+//            if(world.isRemote) {
+//                UUID id = dataManager.get(PLAYER).orNull();
+//                if(id == null) {
+//                    return;
+//                }
+//                Entity entity = world.getPlayerEntityByUUID(id);
+//                if(entity != null && entity instanceof EntityPlayer) {
+//                    shooter = (EntityPlayer)entity;
+//                }
+//            } else {
+//                setDead();
+//                return;
+//            }
+//        }
+//
+//
+//        ticks++;
+//        if(ticks > 1000) {
+//            setDead();
+//        }
     }
 
-    private boolean shouldStopHooking() {
-        ItemStack itemstack = shooter.getHeldItemMainhand();
-        ItemStack itemstack2 = shooter.getHeldItemOffhand();
+    private void movePlayer() {
+        EntityLivingBase thrower = getThrower();
+
+        Vec3d pos = getPositionVector();
+        pos = pos.subtract(thrower.getPositionVector());
+        pos = pos.normalize();
+
+        thrower.motionX = pos.x;
+        thrower.motionY = pos.y;
+        thrower.motionZ = pos.z;
+    }
+
+    public void onImpact(RayTraceResult result) {
+        if(result.typeOfHit == RayTraceResult.Type.BLOCK) {
+            fixed = true;
+        }
+    }
+
+    private boolean shouldStopHooking(EntityLivingBase thrower) {
+        ItemStack itemstack = thrower.getHeldItemMainhand();
+        ItemStack itemstack2 = thrower.getHeldItemOffhand();
         boolean flag = itemstack.getItem() instanceof ItemHook;
         boolean flag2 = itemstack2.getItem() instanceof ItemHook;
 
-        if (!shooter.isDead && shooter.isEntityAlive() && (flag || flag2) && getDistanceSq(shooter) <= 1024.0D) {
+        if (!thrower.isDead && thrower.isEntityAlive() && (flag || flag2) && getDistanceSq(thrower) <= 1024.0D) {
             return false;
         } else {
             setDead();
@@ -107,32 +141,32 @@ public class EntityHook extends Entity {
         }
     }
 
-    @Override
-    public void setDead() {
-        System.out.println("dead!");
-        this.isDead = true;
-    }
+//    @Override
+//    public void setDead() {
+//        System.out.println("dead!");
+//        this.isDead = true;
+//    }
 
-    protected boolean canTriggerWalking()
-    {
+    protected boolean canTriggerWalking() {
         return false;
     }
 
-    /**
-     * (abstract) Protected helper method to write subclass entity data to NBT.
-     */
-    public void writeEntityToNBT(NBTTagCompound compound)
-    {
-    }
+    public EntityLivingBase getThrower() {
+        if(thrower != null) {
+            return thrower;
+        }
 
-    /**
-     * (abstract) Protected helper method to read subclass entity data from NBT.
-     */
-    public void readEntityFromNBT(NBTTagCompound compound)
-    {
-    }
+        thrower = super.getThrower();
+        if(thrower != null) {
+            return thrower;
+        }
 
-    public EntityPlayer getShooter() {
-        return shooter;
+        UUID id = dataManager.get(SHOOTER).orNull();
+        if(id == null) {
+            return null;
+        } else {
+            thrower = world.getPlayerEntityByUUID(id);
+            return thrower;
+        }
     }
 }
