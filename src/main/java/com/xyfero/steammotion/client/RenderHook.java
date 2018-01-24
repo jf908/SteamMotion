@@ -38,7 +38,7 @@ public class RenderHook extends Render<EntityHook> {
     {
         hookModel = new ModelHook();
 
-        EntityLivingBase entityplayer = entity.getThrower();
+        EntityLivingBase entityplayer = entity.getShooter();
 
         if (entityplayer != null && !this.renderOutlines)
         {

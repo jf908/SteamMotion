@@ -8,8 +8,11 @@ import net.minecraft.entity.Entity;
 import net.minecraft.entity.EntityLivingBase;
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.entity.projectile.EntityThrowable;
+import net.minecraft.entity.projectile.ProjectileHelper;
 import net.minecraft.init.Blocks;
 import net.minecraft.item.ItemStack;
+import net.minecraft.nbt.NBTTagCompound;
+import net.minecraft.nbt.NBTTagList;
 import net.minecraft.network.datasync.DataParameter;
 import net.minecraft.network.datasync.DataSerializers;
 import net.minecraft.network.datasync.EntityDataManager;
@@ -19,71 +22,80 @@ import net.minecraft.world.World;
 
 import java.util.UUID;
 
-public class EntityHook extends EntityThrowable {
+public class EntityHook extends Entity {
 
 //    private EntityPlayer shooter;
 
-    private static final DataParameter<Optional<UUID>> SHOOTER = EntityDataManager.createKey(EntityHook.class, DataSerializers.OPTIONAL_UNIQUE_ID);
+    private static final DataParameter<Integer> SHOOTER = EntityDataManager.createKey(EntityHook.class, DataSerializers.VARINT);
+    private EntityLivingBase shooter;
+
     private State state = State.FLYING;
     private BlockPos fixedTo;
 
-    private int ticks;
+    private int ticksInAir;
+
     private double length;
 
     public EntityHook(World world) {
         super(world);
+        setSize(0.5F, 0.5F);
     }
 
     /**
      * Assumed to be only called by the server
      *
      * @param world
-     * @param player
+     * @param entity
      */
-    public EntityHook(World world, EntityPlayer player) {
-        super(world, player);
+    public EntityHook(World world, EntityLivingBase entity) {
+        this(world);
 
-        dataManager.set(SHOOTER, Optional.of(player.getUniqueID()));
+        shooter = entity;
+        dataManager.set(SHOOTER, entity.getEntityId());
 
-        shoot(player, player.rotationPitch, player.rotationYaw, 0, 3, 1);
-        if (!player.onGround) {
-            motionY -= player.motionY;
-        }
+        shoot();
     }
 
     protected void entityInit() {
-        dataManager.register(SHOOTER, Optional.absent());
+        dataManager.register(SHOOTER, -1);
+    }
+
+    private void shoot() {
+        setLocationAndAngles(shooter.posX, shooter.posY + shooter.getEyeHeight(), shooter.posZ, shooter.rotationYaw, shooter.rotationPitch);
+        setPosition(posX, posY, posZ);
+
+        Vec3d vec = shooter.getLookVec().scale(3.0);
+        motionX = vec.x;
+        motionY = vec.y;
+        motionZ = vec.z;
     }
 
     public void onUpdate() {
-        EntityLivingBase thrower = getThrower();
-        if(thrower == null) {
+        EntityLivingBase shooter = getShooter();
+        if(shooter == null) {
             if(!world.isRemote) {
                 setDead();
             }
             return;
         }
 
-        if(shouldStopHooking(thrower)) return;
+        if(shouldStopHooking(shooter)) return;
 
-        if(state == State.FLYING) {
-            super.onUpdate();
-        } else {
-            onEntityUpdate();
-        }
+        super.onUpdate();
 
         switch(state) {
             case FLYING:
+                handleFlying();
                 break;
             case FIXED:
-                if(thrower.getPositionVector().distanceTo(getPositionVector()) < 3) {
+                if(shooter.getPositionVector().distanceTo(getPositionVector()) < 3) {
                     if(world.getBlockState(fixedTo).getBlock().equals(Blocks.IRON_BARS)) {
                         state = State.SKATING;
                         System.out.println("skate!");
-                        thrower.setPosition(fixedTo.getX()+0.5, fixedTo.getY()-2, fixedTo.getZ()+0.5);
-                        thrower.motionX = 0;
-                        thrower.motionY = 0;
-                        thrower.motionZ = 0;
+                        shooter.setPosition(fixedTo.getX()+0.5, fixedTo.getY()-2, fixedTo.getZ()+0.5);
+                        shooter.motionX = 0;
+                        shooter.motionY = 0;
+                        shooter.motionZ = 0;
                         return;
                     }
                 }
@@ -96,29 +108,29 @@ public class EntityHook extends EntityThrowable {
 //                }
 
                 resetMotion();
-//                movePlayer();
+//                movePlayerTowards();
                 break;
             case SKATING:
-                if(world.getBlockState(thrower.getPosition().add(-0.5,2,-0.5)).getBlock().equals(Blocks.IRON_BARS)) {
+                if(world.getBlockState(shooter.getPosition().add(-0.5,2,-0.5)).getBlock().equals(Blocks.IRON_BARS)) {
 
-                    float angle = thrower.rotationYaw % 360f;
+                    float angle = shooter.rotationYaw % 360f;
                     if(angle < 0f) {
                         angle += 360f;
                     }
 
                     if(angle > 180f) {
-                        thrower.motionX = 1;
-                        thrower.motionY = 0;
-                        thrower.motionZ = 0;
+                        shooter.motionX = 1;
+                        shooter.motionY = 0;
+                        shooter.motionZ = 0;
                     } else {
-                        thrower.motionX = -1;
-                        thrower.motionY = 0;
-                        thrower.motionZ = 0;
+                        shooter.motionX = -1;
+                        shooter.motionY = 0;
+                        shooter.motionZ = 0;
                     }
 
-                    posX = thrower.posX;
-                    posY = thrower.posY + 2;
-                    posZ = thrower.posZ;
+                    posX = shooter.posX;
+                    posY = shooter.posY + 2;
+                    posZ = shooter.posZ;
 
                     world.spawnParticle(EnumParticleTypes.CRIT, posX, posY, posZ, 0, 0, 0);
                 } else {
@@ -130,29 +142,57 @@ public class EntityHook extends EntityThrowable {
         super.onUpdate();
     }
 
-    private void handlerPlayerMove() {
-        if(thrower.getPositionVector().distanceTo(getPositionVector()) >= length) {
-            Vec3d vec = new Vec3d(thrower.motionX, thrower.motionY, thrower.motionZ);
+    private void handleFlying() {
+        ++this.ticksInAir;
+        RayTraceResult raytraceresult = ProjectileHelper.forwardsRaycast(this, true, this.ticksInAir >= 25, shooter);
 
-//            Vec3d newMotion = vec.crossProduct(getPositionVector().subtract(thrower.getPositionVector()));
+        if(raytraceresult != null) {
+            onImpact(raytraceresult);
+        }
+
+        this.posX += this.motionX;
+        this.posY += this.motionY;
+        this.posZ += this.motionZ;
+
+        if (this.isInWater()) {
+            for (int i = 0; i < 4; ++i) {
+                float f1 = 0.25F;
+                this.world.spawnParticle(EnumParticleTypes.WATER_BUBBLE, this.posX - this.motionX * 0.25D, this.posY - this.motionY * 0.25D, this.posZ - this.motionZ * 0.25D, this.motionX, this.motionY, this.motionZ);
+            }
+        }
+
+//        this.motionX += this.accelerationX;
+//        this.motionY += this.accelerationY;
+//        this.motionZ += this.accelerationZ;
+//        this.motionX *= (double)f;
+//        this.motionY *= (double)f;
+//        this.motionZ *= (double)f;
+//        this.world.spawnParticle(this.getParticleType(), this.posX, this.posY + 0.5D, this.posZ, 0.0D, 0.0D, 0.0D);
+        setPosition(this.posX, this.posY, this.posZ);
+    }
+
+    private void handlerPlayerMove() {
+        if(shooter.getPositionVector().distanceTo(getPositionVector()) >= length) {
+            Vec3d vec = new Vec3d(shooter.motionX, shooter.motionY, shooter.motionZ);
+
+//            Vec3d newMotion = vec.crossProduct(shooter.getPositionVector().subtract(getPositionVector()).normalize());
 //
-//            if(newMotion.lengthSquared() > 5.0) {
+//            if(newMotion.lengthVector() > 1.0) {
 //                newMotion.normalize();
 //            }
 
-//            thrower.motionX = newMotion.x;
-//            thrower.motionY = newMotion.y;
-//            thrower.motionZ = newMotion.z;
+//            shooter.motionX = newMotion.x;
+//            shooter.motionY = newMotion.y;
+//            shooter.motionZ = newMotion.z;
+
+            shooter.motionX = - vec.x;
+            shooter.motionY = - vec.y;
+            shooter.motionZ = - vec.z;
         }
     }
 
-    @Override
-    public boolean hasNoGravity() {
-        return true;
-    }
-
-    private void movePlayer() {
-        EntityLivingBase thrower = getThrower();
+    private void movePlayerTowards() {
+        EntityLivingBase thrower = getShooter();
 
         Vec3d pos = getPositionVector();
         pos = pos.subtract(thrower.getPositionVector());
@@ -169,7 +209,7 @@ public class EntityHook extends EntityThrowable {
             fixedTo = result.getBlockPos();
 
 //            if(!world.isRemote) {
-//                setPosition(result.hitVec.x, result.hitVec.y, result.hitVec.z);
+            setPosition(result.hitVec.x, result.hitVec.y, result.hitVec.z);
 //            }
             System.out.println(result.hitVec);
 
@@ -177,11 +217,26 @@ public class EntityHook extends EntityThrowable {
 
 //            rotationYaw = prevRotationYaw;
 //            rotationPitch = prevRotationPitch;
-
-            length = thrower.getPositionVector().distanceTo(getPositionVector());
+            if(getShooter() == null) return;
+            length = shooter.getPositionVector().distanceTo(getPositionVector());
         }
     }
 
+
+    public void writeEntityToNBT(NBTTagCompound compound) {
+        compound.setTag("direction", this.newDoubleNBTList(new double[] {this.motionX, this.motionY, this.motionZ}));
+    }
+
+    public void readEntityFromNBT(NBTTagCompound compound) {
+        if (compound.hasKey("direction", 9) && compound.getTagList("direction", 6).tagCount() == 3) {
+            NBTTagList nbttaglist1 = compound.getTagList("direction", 6);
+            this.motionX = nbttaglist1.getDoubleAt(0);
+            this.motionY = nbttaglist1.getDoubleAt(1);
+            this.motionZ = nbttaglist1.getDoubleAt(2);
+        } else {
+            this.setDead();
+        }
+    }
     private boolean shouldStopHooking(EntityLivingBase thrower) {
         ItemStack itemstack = thrower.getHeldItemMainhand();
         ItemStack itemstack2 = thrower.getHeldItemOffhand();
@@ -196,26 +251,18 @@ public class EntityHook extends EntityThrowable {
         }
     }
 
-    protected boolean canTriggerWalking() {
-        return false;
-    }
-
-    public EntityLivingBase getThrower() {
-        if(thrower != null) {
-            return thrower;
+    public EntityLivingBase getShooter() {
+        if(shooter != null) {
+            return shooter;
         }
 
-        thrower = super.getThrower();
-        if(thrower != null) {
-            return thrower;
-        }
-
-        UUID id = dataManager.get(SHOOTER).orNull();
-        if(id == null) {
-            return null;
+        int id = dataManager.get(SHOOTER);
+        Entity entity = world.getEntityByID(id);
+        if(entity instanceof EntityLivingBase) {
+            shooter = (EntityLivingBase)entity;
+            return shooter;
         } else {
-            thrower = world.getPlayerEntityByUUID(id);
-            return thrower;
+            return null;
         }
     }
 
@@ -223,6 +270,16 @@ public class EntityHook extends EntityThrowable {
         motionX = 0;
         motionY = 0;
         motionZ = 0;
+    }
+
+    @Override
+    public boolean hasNoGravity() {
+        return true;
+    }
+
+    @Override
+    protected boolean canTriggerWalking() {
+        return false;
     }
 
     static enum State {

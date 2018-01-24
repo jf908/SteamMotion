@@ -27,14 +27,14 @@ public class ItemHook extends SteamMotionItem {
             world.spawnEntity(hookEntity);
         }
 
-        Vec3d vec = player.getLookVec().add(player.getPositionVector()).addVector(0, player.getEyeHeight() - 0.5, 0);
-        for(int i=0; i<5; i++) {
-            double range = 0.5;
-            double d0 = (itemRand.nextDouble() * range) - range/2;
-            double d1 = (itemRand.nextDouble() * range) - range/2;
-            double d2 = (itemRand.nextDouble() * range) - range/2;
-            world.spawnParticle(EnumParticleTypes.SMOKE_LARGE, vec.x + d0, vec.y + d1, vec.z + d2, 0f, 0f, 0f);
-        }
+//        Vec3d vec = player.getLookVec().add(player.getPositionVector()).addVector(0, player.getEyeHeight() - 0.5, 0);
+//        for(int i=0; i<5; i++) {
+//            double range = 0.5;
+//            double d0 = (itemRand.nextDouble() * range) - range/2;
+//            double d1 = (itemRand.nextDouble() * range) - range/2;
+//            double d2 = (itemRand.nextDouble() * range) - range/2;
+//            world.spawnParticle(EnumParticleTypes.SMOKE_LARGE, vec.x + d0, vec.y + d1, vec.z + d2, 0f, 0f, 0f);
+//        }
 
         player.setActiveHand(hand);
 
@@ -48,7 +48,7 @@ public class ItemHook extends SteamMotionItem {
 
     public EnumAction getItemUseAction(ItemStack stack)
     {
-        return EnumAction.BOW;
+        return EnumAction.EAT;
     }
 
     @Override
