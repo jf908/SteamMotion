@@ -2,15 +2,19 @@ package com.xyfero.steammotion.entity;
 
 import com.google.common.base.Optional;
 import com.xyfero.steammotion.item.ItemHook;
+import net.minecraft.block.BlockFence;
+import net.minecraft.block.BlockPane;
+import net.minecraft.entity.Entity;
 import net.minecraft.entity.EntityLivingBase;
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.entity.projectile.EntityThrowable;
+import net.minecraft.init.Blocks;
 import net.minecraft.item.ItemStack;
 import net.minecraft.network.datasync.DataParameter;
 import net.minecraft.network.datasync.DataSerializers;
 import net.minecraft.network.datasync.EntityDataManager;
-import net.minecraft.util.math.RayTraceResult;
-import net.minecraft.util.math.Vec3d;
+import net.minecraft.util.EnumParticleTypes;
+import net.minecraft.util.math.*;
 import net.minecraft.world.World;
 
 import java.util.UUID;
@@ -20,8 +24,11 @@ public class EntityHook extends EntityThrowable {
 //    private EntityPlayer shooter;
 
     private static final DataParameter<Optional<UUID>> SHOOTER = EntityDataManager.createKey(EntityHook.class, DataSerializers.OPTIONAL_UNIQUE_ID);
+    private State state = State.FLYING;
+    private BlockPos fixedTo;
+
     private int ticks;
-    private boolean fixed;
+    private double length;
 
     public EntityHook(World world) {
         super(world);
@@ -37,27 +44,18 @@ public class EntityHook extends EntityThrowable {
         super(world, player);
 
         dataManager.set(SHOOTER, Optional.of(player.getUniqueID()));
-    }
 
-//    private void shoot() {
-//        if(shooter == null) return;
-//
-//        Vec3d vec = shooter.getLookVec();
-//        setLocationAndAngles(shooter.posX, shooter.posY, shooter.posZ, shooter.cameraYaw, shooter.cameraPitch);
-//
-//        motionX = vec.x;
-//        motionY = vec.y;
-//        motionZ = vec.z;
-//        velocityChanged = true;
-//    }
+        shoot(player, player.rotationPitch, player.rotationYaw, 0, 3, 1);
+        if (!player.onGround) {
+            motionY -= player.motionY;
+        }
+    }
 
     protected void entityInit() {
         dataManager.register(SHOOTER, Optional.absent());
     }
 
     public void onUpdate() {
-        super.onUpdate();
-
         EntityLivingBase thrower = getThrower();
         if(thrower == null) {
             if(!world.isRemote) {
@@ -68,45 +66,89 @@ public class EntityHook extends EntityThrowable {
 
         if(shouldStopHooking(thrower)) return;
 
-        if(fixed) {
-            if(thrower.getPositionVector().distanceTo(getPositionVector()) < 1) {
-                setDead();
-                return;
-            }
-
-            motionX = 0;
-            motionY = 0;
-            motionZ = 0;
-
-            movePlayer();
+        if(state == State.FLYING) {
+            super.onUpdate();
         } else {
-            Vec3d vec = thrower.getLookVec();
-            motionX = vec.x;
-            motionY = vec.y;
-            motionZ = vec.z;
+            onEntityUpdate();
         }
 
-//        if(shooter == null) {
-//            if(world.isRemote) {
-//                UUID id = dataManager.get(PLAYER).orNull();
-//                if(id == null) {
+        switch(state) {
+            case FLYING:
+                break;
+            case FIXED:
+                if(thrower.getPositionVector().distanceTo(getPositionVector()) < 3) {
+                    if(world.getBlockState(fixedTo).getBlock().equals(Blocks.IRON_BARS)) {
+                        state = State.SKATING;
+                        System.out.println("skate!");
+                        thrower.setPosition(fixedTo.getX()+0.5, fixedTo.getY()-2, fixedTo.getZ()+0.5);
+                        thrower.motionX = 0;
+                        thrower.motionY = 0;
+                        thrower.motionZ = 0;
+                        return;
+                    }
+                }
+
+                handlerPlayerMove();
+
+//                if(thrower.getPositionVector().distanceTo(getPositionVector()) + 500 < new Vec3d(thrower.prevPosX, thrower.prevPosY, thrower.prevPosZ).distanceTo(getPositionVector())) {
+//                    setDead();
 //                    return;
 //                }
-//                Entity entity = world.getPlayerEntityByUUID(id);
-//                if(entity != null && entity instanceof EntityPlayer) {
-//                    shooter = (EntityPlayer)entity;
-//                }
-//            } else {
-//                setDead();
-//                return;
+
+                resetMotion();
+//                movePlayer();
+                break;
+            case SKATING:
+                if(world.getBlockState(thrower.getPosition().add(-0.5,2,-0.5)).getBlock().equals(Blocks.IRON_BARS)) {
+
+                    float angle = thrower.rotationYaw % 360f;
+                    if(angle < 0f) {
+                        angle += 360f;
+                    }
+
+                    if(angle > 180f) {
+                        thrower.motionX = 1;
+                        thrower.motionY = 0;
+                        thrower.motionZ = 0;
+                    } else {
+                        thrower.motionX = -1;
+                        thrower.motionY = 0;
+                        thrower.motionZ = 0;
+                    }
+
+                    posX = thrower.posX;
+                    posY = thrower.posY + 2;
+                    posZ = thrower.posZ;
+
+                    world.spawnParticle(EnumParticleTypes.CRIT, posX, posY, posZ, 0, 0, 0);
+                } else {
+                    setDead();
+                }
+                break;
+        }
+
+        super.onUpdate();
+    }
+
+    private void handlerPlayerMove() {
+        if(thrower.getPositionVector().distanceTo(getPositionVector()) >= length) {
+            Vec3d vec = new Vec3d(thrower.motionX, thrower.motionY, thrower.motionZ);
+
+//            Vec3d newMotion = vec.crossProduct(getPositionVector().subtract(thrower.getPositionVector()));
+//
+//            if(newMotion.lengthSquared() > 5.0) {
+//                newMotion.normalize();
 //            }
-//        }
-//
-//
-//        ticks++;
-//        if(ticks > 1000) {
-//            setDead();
-//        }
+
+//            thrower.motionX = newMotion.x;
+//            thrower.motionY = newMotion.y;
+//            thrower.motionZ = newMotion.z;
+        }
+    }
+
+    @Override
+    public boolean hasNoGravity() {
+        return true;
     }
 
     private void movePlayer() {
@@ -123,7 +165,20 @@ public class EntityHook extends EntityThrowable {
 
     public void onImpact(RayTraceResult result) {
         if(result.typeOfHit == RayTraceResult.Type.BLOCK) {
-            fixed = true;
+            state = State.FIXED;
+            fixedTo = result.getBlockPos();
+
+//            if(!world.isRemote) {
+//                setPosition(result.hitVec.x, result.hitVec.y, result.hitVec.z);
+//            }
+            System.out.println(result.hitVec);
+
+            resetMotion();
+
+//            rotationYaw = prevRotationYaw;
+//            rotationPitch = prevRotationPitch;
+
+            length = thrower.getPositionVector().distanceTo(getPositionVector());
         }
     }
 
@@ -140,12 +195,6 @@ public class EntityHook extends EntityThrowable {
             return true;
         }
     }
-
-//    @Override
-//    public void setDead() {
-//        System.out.println("dead!");
-//        this.isDead = true;
-//    }
 
     protected boolean canTriggerWalking() {
         return false;
@@ -169,4 +218,16 @@ public class EntityHook extends EntityThrowable {
             return thrower;
         }
     }
+
+    private void resetMotion() {
+        motionX = 0;
+        motionY = 0;
+        motionZ = 0;
+    }
+
+    static enum State {
+        FLYING,
+        FIXED,
+        SKATING
+    };
 }
