@@ -19,22 +19,29 @@ import net.minecraft.network.datasync.EntityDataManager;
 import net.minecraft.util.EnumParticleTypes;
 import net.minecraft.util.math.*;
 import net.minecraft.world.World;
+import net.minecraftforge.fml.relauncher.Side;
+import net.minecraftforge.fml.relauncher.SideOnly;
+import org.lwjgl.Sys;
 
+import java.util.HashMap;
 import java.util.UUID;
 
 public class EntityHook extends Entity {
 
-//    private EntityPlayer shooter;
+    private static final HashMap<EntityLivingBase, EntityHook> hooks = new HashMap<>();
+    private ItemStack itemstack;
 
     private static final DataParameter<Integer> SHOOTER = EntityDataManager.createKey(EntityHook.class, DataSerializers.VARINT);
     private EntityLivingBase shooter;
 
+    private static final DataParameter<Float> LENGTH = EntityDataManager.createKey(EntityHook.class, DataSerializers.FLOAT);
+
     private State state = State.FLYING;
     private BlockPos fixedTo;
 
-    private int ticksInAir;
+    private Vec3d lastMotion;
 
-    private double length;
+    private int ticksInAir;
 
     public EntityHook(World world) {
         super(world);
@@ -47,27 +54,44 @@ public class EntityHook extends Entity {
      * @param world
      * @param entity
      */
-    public EntityHook(World world, EntityLivingBase entity) {
+    public EntityHook(World world, EntityLivingBase entity, ItemStack itemstack) {
         this(world);
 
+        hooks.put(entity, this);
         shooter = entity;
         dataManager.set(SHOOTER, entity.getEntityId());
+        this.itemstack = itemstack;
 
         shoot();
     }
 
     protected void entityInit() {
         dataManager.register(SHOOTER, -1);
+        dataManager.register(LENGTH, 0f);
     }
 
     private void shoot() {
+        float yaw = shooter.rotationYaw % 360f;
+        if(yaw < 0f) {
+            yaw += 360f;
+        }
+        float pitch = shooter.rotationPitch % 360f;
+        if(pitch < 0f) {
+            pitch += 360f;
+        }
+
         setLocationAndAngles(shooter.posX, shooter.posY + shooter.getEyeHeight(), shooter.posZ, shooter.rotationYaw, shooter.rotationPitch);
         setPosition(posX, posY, posZ);
 
-        Vec3d vec = shooter.getLookVec().scale(3.0);
+        Vec3d vec = shooter.getLookVec().scale(4.0);
         motionX = vec.x;
         motionY = vec.y;
         motionZ = vec.z;
+    }
+
+    @SideOnly(Side.CLIENT)
+    public boolean isInRangeToRenderDist(double distance) {
+        return distance < 4096.0D;
     }
 
     public void onUpdate() {
@@ -91,8 +115,7 @@ public class EntityHook extends Entity {
                 if(shooter.getPositionVector().distanceTo(getPositionVector()) < 3) {
                     if(world.getBlockState(fixedTo).getBlock().equals(Blocks.IRON_BARS)) {
                         state = State.SKATING;
-                        System.out.println("skate!");
-                        shooter.setPosition(fixedTo.getX()+0.5, fixedTo.getY()-2, fixedTo.getZ()+0.5);
+                        shooter.setPositionAndUpdate(fixedTo.getX()+0.5, fixedTo.getY()-2, fixedTo.getZ()+0.5);
                         shooter.motionX = 0;
                         shooter.motionY = 0;
                         shooter.motionZ = 0;
@@ -101,17 +124,9 @@ public class EntityHook extends Entity {
                 }
 
                 handlerPlayerMove();
-
-//                if(thrower.getPositionVector().distanceTo(getPositionVector()) + 500 < new Vec3d(thrower.prevPosX, thrower.prevPosY, thrower.prevPosZ).distanceTo(getPositionVector())) {
-//                    setDead();
-//                    return;
-//                }
-
-                resetMotion();
-//                movePlayerTowards();
                 break;
             case SKATING:
-                if(world.getBlockState(shooter.getPosition().add(-0.5,2,-0.5)).getBlock().equals(Blocks.IRON_BARS)) {
+                if(world.getBlockState(new BlockPos(shooter.getPositionVector().addVector(0,2,0))).getBlock().equals(Blocks.IRON_BARS)) {
 
                     float angle = shooter.rotationYaw % 360f;
                     if(angle < 0f) {
@@ -132,8 +147,11 @@ public class EntityHook extends Entity {
                     posY = shooter.posY + 2;
                     posZ = shooter.posZ;
 
-                    world.spawnParticle(EnumParticleTypes.CRIT, posX, posY, posZ, 0, 0, 0);
+                    for(int i=0; i<5; i++) {
+                        world.spawnParticle(EnumParticleTypes.CRIT, posX, posY, posZ, rand.nextDouble(), rand.nextDouble(), rand.nextDouble());
+                    }
                 } else {
+                    System.out.println(world.getBlockState(new BlockPos(shooter.getPositionVector().addVector(0,1.8,0))).getBlock());
                     setDead();
                 }
                 break;
@@ -150,9 +168,12 @@ public class EntityHook extends Entity {
             onImpact(raytraceresult);
         }
 
-        this.posX += this.motionX;
-        this.posY += this.motionY;
-        this.posZ += this.motionZ;
+        prevPosX = posX;
+        prevPosY = posY;
+        prevPosZ = posZ;
+        posX += motionX;
+        posY += motionY;
+        posZ += motionZ;
 
         if (this.isInWater()) {
             for (int i = 0; i < 4; ++i) {
@@ -161,19 +182,17 @@ public class EntityHook extends Entity {
             }
         }
 
-//        this.motionX += this.accelerationX;
-//        this.motionY += this.accelerationY;
-//        this.motionZ += this.accelerationZ;
-//        this.motionX *= (double)f;
-//        this.motionY *= (double)f;
-//        this.motionZ *= (double)f;
-//        this.world.spawnParticle(this.getParticleType(), this.posX, this.posY + 0.5D, this.posZ, 0.0D, 0.0D, 0.0D);
-        setPosition(this.posX, this.posY, this.posZ);
+        setPosition(posX, posY, posZ);
+    }
+
+    public void setPosition(double x, double y, double z) {
+        if(state == State.FIXED) return;
+        super.setPosition(x, y, z);
     }
 
     private void handlerPlayerMove() {
-        if(shooter.getPositionVector().distanceTo(getPositionVector()) >= length) {
-            Vec3d vec = new Vec3d(shooter.motionX, shooter.motionY, shooter.motionZ);
+        if(shooter.getPositionVector().distanceTo(getPositionVector()) >= getLength()) {
+//            Vec3d vec = new Vec3d(shooter.motionX, shooter.motionY, shooter.motionZ);
 
 //            Vec3d newMotion = vec.crossProduct(shooter.getPositionVector().subtract(getPositionVector()).normalize());
 //
@@ -185,9 +204,39 @@ public class EntityHook extends Entity {
 //            shooter.motionY = newMotion.y;
 //            shooter.motionZ = newMotion.z;
 
-            shooter.motionX = - vec.x;
-            shooter.motionY = - vec.y;
-            shooter.motionZ = - vec.z;
+//            shooter.motionX = - vec.x;
+//            shooter.motionY = - vec.y;
+//            shooter.motionZ = - vec.z;
+
+//            Vec3d normal = shooter.getPositionVector().subtract(getPositionVector()).normalize();
+//
+//            Vec3d gravity = new Vec3d(0, -1f, 0);
+//
+//            Vec3d point = shooter.getPositionVector().add(gravity).subtract(normal.scale(gravity.dotProduct(normal)));
+//            Vec3d motion = point.subtract(shooter.getPositionVector());
+//            shooter.motionX = lastMotion.x + motion.x;
+//            shooter.motionY = lastMotion.y + motion.y;
+//            shooter.motionZ = lastMotion.z + motion.z;
+
+            double amount = shooter.getPositionVector().distanceTo(getPositionVector()) - getLength();
+            amount *= 0.5;
+            Vec3d motion = getPositionVector().subtract(shooter.getPositionVector()).normalize().scale(amount);
+
+            shooter.motionX += motion.x;
+            shooter.motionY += motion.y;
+            shooter.motionZ += motion.z;
+
+            lastMotion = motion;
+        } else {
+//            shooter.motionX = lastMotion.x;
+//            shooter.motionY = lastMotion.y;
+//            shooter.motionZ = lastMotion.z;
+        }
+
+        if(!shooter.onGround) {
+            float val = 1.1f;
+            shooter.motionX *= val;
+            shooter.motionZ *= val;
         }
     }
 
@@ -205,20 +254,32 @@ public class EntityHook extends Entity {
 
     public void onImpact(RayTraceResult result) {
         if(result.typeOfHit == RayTraceResult.Type.BLOCK) {
-            state = State.FIXED;
             fixedTo = result.getBlockPos();
 
-//            if(!world.isRemote) {
-            setPosition(result.hitVec.x, result.hitVec.y, result.hitVec.z);
-//            }
-            System.out.println(result.hitVec);
+            lastMotion = new Vec3d(shooter.motionX, shooter.motionY, shooter.motionZ);
+            setPositionAndUpdate(result.hitVec.x, result.hitVec.y, result.hitVec.z);
+            state = State.FIXED;
 
             resetMotion();
+            prevPosX = posX;
+            prevPosY = posY;
+            prevPosZ = posZ;
 
 //            rotationYaw = prevRotationYaw;
 //            rotationPitch = prevRotationPitch;
             if(getShooter() == null) return;
-            length = shooter.getPositionVector().distanceTo(getPositionVector());
+            if(world.isRemote) {
+                setLength((float)shooter.getPositionVector().distanceTo(getPositionVector()));
+                System.out.println("setting length");
+            }
+        }
+    }
+
+    public void reel() {
+        System.out.println(getLength());
+        if(state == State.FIXED && getLength() > 1.0) {
+            System.out.println("reelo");
+            setLength(getLength() - 0.5f);
         }
     }
 
@@ -251,6 +312,14 @@ public class EntityHook extends Entity {
         }
     }
 
+    private float getLength() {
+        return dataManager.get(LENGTH);
+    }
+
+    private void setLength(float len) {
+        dataManager.set(LENGTH, len);
+    }
+
     public EntityLivingBase getShooter() {
         if(shooter != null) {
             return shooter;
@@ -264,6 +333,16 @@ public class EntityHook extends Entity {
         } else {
             return null;
         }
+    }
+
+    public void setDead() {
+        if(!world.isRemote) {
+            hooks.remove(shooter);
+            if(itemstack != null) {
+                itemstack.setItemDamage(0);
+            }
+        }
+        super.setDead();
     }
 
     private void resetMotion() {
@@ -280,6 +359,10 @@ public class EntityHook extends Entity {
     @Override
     protected boolean canTriggerWalking() {
         return false;
+    }
+
+    public static EntityHook getHook(EntityLivingBase entity) {
+        return hooks.get(entity);
     }
 
     static enum State {

@@ -1,16 +1,20 @@
 package com.xyfero.steammotion.item;
 
+import com.xyfero.steammotion.SteamMotion;
 import com.xyfero.steammotion.entity.EntityHook;
+import net.minecraft.client.renderer.block.model.ModelResourceLocation;
 import net.minecraft.entity.EntityLivingBase;
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.item.EnumAction;
+import net.minecraft.item.IItemPropertyGetter;
 import net.minecraft.item.ItemStack;
-import net.minecraft.util.ActionResult;
-import net.minecraft.util.EnumActionResult;
-import net.minecraft.util.EnumHand;
-import net.minecraft.util.EnumParticleTypes;
+import net.minecraft.util.*;
 import net.minecraft.util.math.Vec3d;
 import net.minecraft.world.World;
+import net.minecraftforge.fml.relauncher.Side;
+import net.minecraftforge.fml.relauncher.SideOnly;
+
+import javax.annotation.Nullable;
 
 public class ItemHook extends SteamMotionItem {
     private EntityHook hookEntity;
@@ -23,8 +27,16 @@ public class ItemHook extends SteamMotionItem {
         ItemStack itemstack = player.getHeldItem(hand);
 
         if(!world.isRemote) {
-            hookEntity = new EntityHook(world, player);
-            world.spawnEntity(hookEntity);
+            EntityHook hookEntity = EntityHook.getHook(player);
+            if(hookEntity != null) {
+                hookEntity.reel();
+            } else {
+
+                hookEntity = new EntityHook(world, player, itemstack);
+                world.spawnEntity(hookEntity);
+
+                itemstack.setItemDamage(1);
+            }
         }
 
 //        Vec3d vec = player.getLookVec().add(player.getPositionVector()).addVector(0, player.getEyeHeight() - 0.5, 0);
@@ -36,23 +48,17 @@ public class ItemHook extends SteamMotionItem {
 //            world.spawnParticle(EnumParticleTypes.SMOKE_LARGE, vec.x + d0, vec.y + d1, vec.z + d2, 0f, 0f, 0f);
 //        }
 
-        player.setActiveHand(hand);
+//        player.swingArm(hand);
 
-        return new ActionResult<>(EnumActionResult.SUCCESS, itemstack);
+        return new ActionResult<>(EnumActionResult.PASS, itemstack);
     }
 
     @Override
-    public int getMaxItemUseDuration(ItemStack stack) {
-        return 72000;
-    }
-
-    public EnumAction getItemUseAction(ItemStack stack)
-    {
-        return EnumAction.EAT;
-    }
-
-    @Override
-    public void onPlayerStoppedUsing(ItemStack stack, World world, EntityLivingBase entity, int timeLeft) {
-        hookEntity.setDead();
+    public boolean onEntitySwing(EntityLivingBase entityLiving, ItemStack stack) {
+        EntityHook hookEntity = EntityHook.getHook(entityLiving);
+        if(hookEntity != null) {
+            hookEntity.setDead();
+        }
+        return false;
     }
 }

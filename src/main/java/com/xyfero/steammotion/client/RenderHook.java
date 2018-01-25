@@ -50,8 +50,8 @@ public class RenderHook extends Render<EntityHook> {
             Tessellator tessellator = Tessellator.getInstance();
             BufferBuilder bufferbuilder = tessellator.getBuffer();
 
-            GlStateManager.rotate(entity.rotationYaw, 0.0F, 1.0F, 0.0F);
-            GlStateManager.rotate(-entity.rotationPitch - 90f, 1.0F, 0.0F, 0.0F);
+            GlStateManager.rotate(-entity.rotationYaw, 0.0F, 1f ,0f);
+            GlStateManager.rotate(entity.rotationPitch - 90f, 1.0F, 0.0F, 0.0F);
 
             if (this.renderOutlines)
             {
@@ -83,50 +83,39 @@ public class RenderHook extends Render<EntityHook> {
             double d0 = (double)MathHelper.sin(f9);
             double d1 = (double)MathHelper.cos(f9);
             double d2 = (double)k * 0.35D;
-            double d3 = 0.8D;
-            double d4;
-            double d5;
-            double d6;
-            double d7;
+
+            Vec3d offset;
 
             if ((this.renderManager.options == null || this.renderManager.options.thirdPersonView <= 0) && entityplayer == Minecraft.getMinecraft().player)
             {
                 float f10 = this.renderManager.options.fovSetting;
                 f10 = f10 / 100.0F;
-                Vec3d vec3d = new Vec3d((double)k * -0.36D * (double)f10, -0.45D * (double)f10, 0.4D);
-                vec3d = vec3d.rotatePitch(-(entityplayer.prevRotationPitch + (entityplayer.rotationPitch - entityplayer.prevRotationPitch) * partialTicks) * 0.017453292F);
-                vec3d = vec3d.rotateYaw(-(entityplayer.prevRotationYaw + (entityplayer.rotationYaw - entityplayer.prevRotationYaw) * partialTicks) * 0.017453292F);
-                vec3d = vec3d.rotateYaw(f8 * 0.5F);
-                vec3d = vec3d.rotatePitch(-f8 * 0.7F);
-                d4 = entityplayer.prevPosX + (entityplayer.posX - entityplayer.prevPosX) * (double)partialTicks + vec3d.x;
-                d5 = entityplayer.prevPosY + (entityplayer.posY - entityplayer.prevPosY) * (double)partialTicks + vec3d.y;
-                d6 = entityplayer.prevPosZ + (entityplayer.posZ - entityplayer.prevPosZ) * (double)partialTicks + vec3d.z;
-                d7 = (double)entityplayer.getEyeHeight();
+                offset = new Vec3d((double)k * -0.36D * (double)f10, -0.45D * (double)f10, 0.4D);
+                offset = offset.rotatePitch(-(entityplayer.prevRotationPitch + (entityplayer.rotationPitch - entityplayer.prevRotationPitch) * partialTicks) * 0.017453292F);
+                offset = offset.rotateYaw(-(entityplayer.prevRotationYaw + (entityplayer.rotationYaw - entityplayer.prevRotationYaw) * partialTicks) * 0.017453292F);
+                offset = offset.rotateYaw(f8 * 0.5F);
+                offset = offset.rotatePitch(-f8 * 0.7F);
             }
             else
             {
-                d4 = entityplayer.prevPosX + (entityplayer.posX - entityplayer.prevPosX) * (double)partialTicks - d1 * d2 - d0 * 0.8D;
-                d5 = entityplayer.prevPosY + (double)entityplayer.getEyeHeight() + (entityplayer.posY - entityplayer.prevPosY) * (double)partialTicks - 0.45D;
-                d6 = entityplayer.prevPosZ + (entityplayer.posZ - entityplayer.prevPosZ) * (double)partialTicks - d0 * d2 + d1 * 0.8D;
-                d7 = entityplayer.isSneaking() ? -0.1875D : 0.0D;
+//                d5 = entityplayer.prevPosY + (double)entityplayer.getEyeHeight() + (entityplayer.posY - entityplayer.prevPosY) * (double)partialTicks - 0.45D;
+                offset = new Vec3d(- d1 * d2 - d0 * 0.8D, - 0.45D + (entityplayer.isSneaking() ? -0.1875D : 0.0D), - d0 * d2 + d1 * 0.8D);
             }
 
-            double d13 = entity.prevPosX + (entity.posX - entity.prevPosX) * (double)partialTicks;
-            double d8 = entity.prevPosY + (entity.posY - entity.prevPosY) * (double)partialTicks;
-            double d9 = entity.prevPosZ + (entity.posZ - entity.prevPosZ) * (double)partialTicks;
-            double d10 = (double)((float)(d4 - d13));
-            double d11 = (double)((float)(d5 - d8)) + d7;
-            double d12 = (double)((float)(d6 - d9));
             GlStateManager.disableTexture2D();
             GlStateManager.disableLighting();
             bufferbuilder.begin(3, DefaultVertexFormats.POSITION_COLOR);
-            int l = 16;
 
-            for (int i1 = 0; i1 <= 16; ++i1)
-            {
-                float f11 = (float)i1 / 16.0F;
-                bufferbuilder.pos(x + d10 * (double)f11, y + d11 * (double)(f11 * f11 + f11) * 0.5D, z + d12 * (double)f11).color(20, 20, 20, 255).endVertex();
-            }
+            double epPosX = entityplayer.prevPosX + (entityplayer.posX - entityplayer.prevPosX) * (double)partialTicks + offset.x;
+            double epPosY = entityplayer.prevPosY + (entityplayer.posY - entityplayer.prevPosY) * (double)partialTicks + entityplayer.getEyeHeight() + offset.y;
+            double epPosZ = entityplayer.prevPosZ + (entityplayer.posZ - entityplayer.prevPosZ) * (double)partialTicks + offset.z;
+
+            double ePosX = entity.prevPosX + (entity.posX - entity.prevPosX) * (double)partialTicks;
+            double ePosY = entity.prevPosY + (entity.posY - entity.prevPosY) * (double)partialTicks;
+            double ePosZ = entity.prevPosZ + (entity.posZ - entity.prevPosZ) * (double)partialTicks;
+
+            bufferbuilder.pos(x, y, z).color(20,20,20,255).endVertex();
+            bufferbuilder.pos(x + epPosX - ePosX, y + epPosY - ePosY, z + epPosZ - ePosZ).color(20,20,20,255).endVertex();
 
             tessellator.draw();
             GlStateManager.enableLighting();

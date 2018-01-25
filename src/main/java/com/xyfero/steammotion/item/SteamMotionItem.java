@@ -1,9 +1,12 @@
 package com.xyfero.steammotion.item;
 
 import com.xyfero.steammotion.SteamMotion;
+import net.minecraft.client.renderer.ItemMeshDefinition;
+import net.minecraft.client.renderer.block.model.ModelBakery;
 import net.minecraft.client.renderer.block.model.ModelResourceLocation;
 import net.minecraft.creativetab.CreativeTabs;
 import net.minecraft.item.Item;
+import net.minecraft.item.ItemStack;
 import net.minecraft.util.ResourceLocation;
 import net.minecraftforge.client.event.ModelRegistryEvent;
 import net.minecraftforge.client.model.ModelLoader;
@@ -25,6 +28,8 @@ public class SteamMotionItem extends Item {
     @GameRegistry.ObjectHolder("steammotion:steam_hook")
     public static final ItemHook ItemHook = new ItemHook();
 
+    public static final ItemPack ItemPack = new ItemPack();
+
     @Mod.EventBusSubscriber(modid = SteamMotion.MODID)
     public static class RegistrationHandler {
 
@@ -33,12 +38,26 @@ public class SteamMotionItem extends Item {
             final IForgeRegistry<Item> registry = event.getRegistry();
 
             registry.register(ItemHook);
+            registry.register(ItemPack);
         }
 
         @SubscribeEvent
         public static void registerAllModels(final ModelRegistryEvent event) {
             ModelResourceLocation mrl = new ModelResourceLocation(ItemHook.getRegistryName(), "inventory");
+
             ModelLoader.setCustomModelResourceLocation(ItemHook, 0, mrl);
+
+            ModelBakery.registerItemVariants(ItemHook, ItemHook.getRegistryName(), new ResourceLocation(SteamMotion.MODID, "steam_no_hook"));
+            ModelLoader.setCustomMeshDefinition(ItemHook, new ItemMeshDefinition() {
+                private ResourceLocation rl = new ResourceLocation(SteamMotion.MODID, "steam_no_hook");
+                @Override
+                public ModelResourceLocation getModelLocation(ItemStack stack) {
+                    if(stack.getMetadata() == 1) {
+                        return new ModelResourceLocation(rl, "inventory");
+                    }
+                    return new ModelResourceLocation(ItemHook.getRegistryName(), "inventory");
+                }
+            });
         }
     }
 }
