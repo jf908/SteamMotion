@@ -125,6 +125,7 @@ public class EntityHook extends Entity {
             case FIXED:
                 if(!world.isRemote && !posUpdated) {
                     ((WorldServer)world).getEntityTracker().sendToTrackingAndSelf(this, new SPacketEntityTeleport(this));
+                    posUpdated = true;
                 }
 //                if(!world.isRemote) {
 //                    ((WorldServer)world).getEntityTracker().sendToTrackingAndSelf(this, new SPacketEntityTeleport(this));
