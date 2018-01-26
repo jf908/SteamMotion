@@ -3,7 +3,6 @@ package com.xyfero.steammotion.proxy;
 import com.xyfero.steammotion.SteamMotion;
 import com.xyfero.steammotion.client.RenderHook;
 import com.xyfero.steammotion.entity.EntityHook;
-import net.minecraft.client.renderer.entity.RenderCow;
 import net.minecraft.util.ResourceLocation;
 import net.minecraftforge.fml.client.registry.RenderingRegistry;
 import net.minecraftforge.fml.common.event.FMLInitializationEvent;
