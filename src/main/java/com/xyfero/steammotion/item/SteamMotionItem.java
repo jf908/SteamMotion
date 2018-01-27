@@ -46,10 +46,6 @@ public class SteamMotionItem extends Item {
         @SubscribeEvent
         @SideOnly(Side.CLIENT)
         public static void registerAllModels(final ModelRegistryEvent event) {
-            ModelResourceLocation mrl = new ModelResourceLocation(ItemHook.getRegistryName(), "inventory");
-
-            ModelLoader.setCustomModelResourceLocation(ItemHook, 0, mrl);
-
             ModelBakery.registerItemVariants(ItemHook, ItemHook.getRegistryName(), new ResourceLocation(SteamMotion.MODID, "steam_no_hook"));
             ModelLoader.setCustomMeshDefinition(ItemHook, new ItemMeshDefinition() {
                 private ResourceLocation rl = new ResourceLocation(SteamMotion.MODID, "steam_no_hook");
@@ -61,6 +57,9 @@ public class SteamMotionItem extends Item {
                     return new ModelResourceLocation(ItemHook.getRegistryName(), "inventory");
                 }
             });
+
+            ModelResourceLocation mrl = new ModelResourceLocation(ItemPack.getRegistryName(), "inventory");
+            ModelLoader.setCustomModelResourceLocation(ItemPack, 0, mrl);
         }
     }
 }

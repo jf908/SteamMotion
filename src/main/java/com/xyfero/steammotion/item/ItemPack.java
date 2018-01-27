@@ -2,12 +2,21 @@ package com.xyfero.steammotion.item;
 
 import com.sun.javafx.geom.Vec2d;
 import com.xyfero.steammotion.SteamMotion;
+import net.minecraft.client.model.ModelBiped;
+import net.minecraft.client.renderer.texture.TextureAtlasSprite;
+import net.minecraft.entity.Entity;
+import net.minecraft.entity.EntityLivingBase;
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.inventory.EntityEquipmentSlot;
 import net.minecraft.item.ItemArmor;
 import net.minecraft.item.ItemStack;
 import net.minecraft.util.EnumParticleTypes;
+import net.minecraft.util.datafix.fixes.ArmorStandSilent;
 import net.minecraft.world.World;
+import net.minecraftforge.fml.relauncher.Side;
+import net.minecraftforge.fml.relauncher.SideOnly;
+
+import javax.annotation.Nullable;
 
 public class ItemPack extends ItemArmor {
     public ItemPack() {
@@ -20,12 +29,10 @@ public class ItemPack extends ItemArmor {
         setCreativeTab(getCreativeTab().COMBAT);
     }
 
-    private int timer = 0;
-
     @Override
     public void onArmorTick(World world, EntityPlayer player, ItemStack itemStack) {
         if(player.moveStrafing != 0f) {
-            world.spawnParticle(EnumParticleTypes.SMOKE_LARGE, player.posX, player.posY, player.posZ, player.motionX, player.motionY, player.motionZ);
+            world.spawnParticle(EnumParticleTypes.SMOKE_LARGE, player.posX, player.posY + 1.5, player.posZ, player.motionX, player.motionY, player.motionZ);
 
 //            System.out.println(Vec2d.distance(0,0, player.motionX, player.motionZ) );
             if(Vec2d.distance(0,0, player.motionX, player.motionZ) > 2) return;
@@ -37,5 +44,18 @@ public class ItemPack extends ItemArmor {
             player.motionY += 0.02f;
             player.motionZ -= Math.cos(Math.toRadians(-direction)) * amount;
         }
+    }
+
+    @Nullable
+    @Override
+    @SideOnly(Side.CLIENT)
+    public ModelBiped getArmorModel(EntityLivingBase entityLiving, ItemStack itemStack, EntityEquipmentSlot armorSlot, ModelBiped _default) {
+        return SteamMotion.proxy.getArmorModel();
+    }
+
+    @Override
+    @SideOnly(Side.CLIENT)
+    public String getArmorTexture(ItemStack stack, Entity entity, EntityEquipmentSlot slot, String type) {
+        return SteamMotion.MODID + ":textures/models/armor/steam_pack.png";
     }
 }
