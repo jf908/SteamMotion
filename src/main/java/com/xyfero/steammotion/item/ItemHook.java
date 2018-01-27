@@ -7,6 +7,7 @@ import net.minecraft.item.ItemStack;
 import net.minecraft.util.ActionResult;
 import net.minecraft.util.EnumActionResult;
 import net.minecraft.util.EnumHand;
+import net.minecraft.util.EnumParticleTypes;
 import net.minecraft.world.World;
 
 public class ItemHook extends SteamMotionItem {
@@ -16,6 +17,8 @@ public class ItemHook extends SteamMotionItem {
         super("steam_hook");
     }
 
+    private boolean fakeSwing;
+
     public ActionResult<ItemStack> onItemRightClick(World world, EntityPlayer player, EnumHand hand) {
         ItemStack itemstack = player.getHeldItem(hand);
 
@@ -24,7 +27,6 @@ public class ItemHook extends SteamMotionItem {
             if(hookEntity != null) {
                 hookEntity.reel();
             } else {
-
                 hookEntity = new EntityHook(world, player, itemstack);
                 world.spawnEntity(hookEntity);
 
@@ -37,6 +39,7 @@ public class ItemHook extends SteamMotionItem {
 
     @Override
     public boolean onEntitySwing(EntityLivingBase entityLiving, ItemStack stack) {
+        if(fakeSwing) return false;
         EntityHook hookEntity = EntityHook.getHook(entityLiving);
         if(hookEntity != null) {
             hookEntity.setDead();

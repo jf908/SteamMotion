@@ -1,6 +1,7 @@
 package com.xyfero.steammotion.entity;
 
 import com.xyfero.steammotion.item.ItemHook;
+import net.minecraft.block.Block;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.EntityLivingBase;
 import net.minecraft.entity.projectile.ProjectileHelper;
@@ -90,14 +91,6 @@ public class EntityHook extends Entity {
         motionZ = vec.z;
     }
 
-    @Override
-    public void setPosition(double x, double y, double z) {
-        if(world.isRemote) {
-            System.out.println("Setting client position:" + new Vec3d(x,y,z).toString());
-        }
-        super.setPosition(x,y,z);
-    }
-
     @SideOnly(Side.CLIENT)
     public boolean isInRangeToRenderDist(double distance) {
         return distance < 4096.0D;
@@ -127,10 +120,6 @@ public class EntityHook extends Entity {
                     ((WorldServer)world).getEntityTracker().sendToTrackingAndSelf(this, new SPacketEntityTeleport(this));
                     posUpdated = true;
                 }
-//                if(!world.isRemote) {
-//                    ((WorldServer)world).getEntityTracker().sendToTrackingAndSelf(this, new SPacketEntityTeleport(this));
-//                }
-                System.out.println("Actual Pos" + getPositionVector());
                 if(shooter.getPositionVector().distanceTo(getPositionVector()) < 3) {
                     if(world.getBlockState(getPosition()).getBlock().equals(Blocks.IRON_BARS)) {
                         setState(State.SKATING);
@@ -238,7 +227,7 @@ public class EntityHook extends Entity {
         if (this.isInWater()) {
             for (int i = 0; i < 4; ++i) {
                 float f1 = 0.25F;
-                this.world.spawnParticle(EnumParticleTypes.WATER_BUBBLE, posX - motionX * 0.25D, posY - motionY * 0.25D, posZ - motionZ * 0.25D, motionX, motionY, motionZ);
+                world.spawnParticle(EnumParticleTypes.WATER_BUBBLE, posX - motionX * f1, posY - motionY * f1, posZ - motionZ * f1, motionX, motionY, motionZ);
             }
         }
 
@@ -274,7 +263,8 @@ public class EntityHook extends Entity {
 //            shooter.motionZ = lastMotion.z + motion.z;
 
             double amount = shooter.getPositionVector().distanceTo(getPositionVector()) - getLength();
-            amount *= 0.5;
+//            amount *= 0.15; // * Math.sqrt(getLength());
+            amount *= 0.1;
             Vec3d motion = getPositionVector().subtract(shooter.getPositionVector()).normalize().scale(amount);
 
             shooter.motionX += motion.x;
@@ -314,12 +304,15 @@ public class EntityHook extends Entity {
 //            prevPosY = posY;
 //            prevPosZ = posZ;
 
+            setPosition(result.hitVec.x, result.hitVec.y, result.hitVec.z);
+
             if(!world.isRemote) {
                 setState(State.FIXED);
-                setPosition(result.hitVec.x, result.hitVec.y, result.hitVec.z);
+
                 setLength((float)shooter.getPositionVector().distanceTo(getPositionVector()));
 
-//                ((WorldServer)world).getEntityTracker().sendToTrackingAndSelf(this, new SPacketEntityTeleport(this));
+                Vec3d mot = getLookVec().scale(-1).rotatePitch(rand.nextFloat()).rotateYaw(rand.nextFloat());
+                ((WorldServer)world).spawnParticle(EnumParticleTypes.BLOCK_CRACK, false, posX, posY, posZ, 10, 0, 0, 0, 1f, Block.getStateId(world.getBlockState(result.getBlockPos())));
             }
         }
     }

@@ -78,11 +78,11 @@ public class RenderHook extends Render<EntityHook> {
 
             Vec3d offset;
 
-            if ((this.renderManager.options == null || this.renderManager.options.thirdPersonView <= 0) && entityplayer == Minecraft.getMinecraft().player)
+            if ((renderManager.options == null || renderManager.options.thirdPersonView <= 0) && entityplayer == Minecraft.getMinecraft().player)
             {
                 float f10 = this.renderManager.options.fovSetting;
                 f10 = f10 / 100.0F;
-                offset = new Vec3d((double)k * -0.36D * (double)f10, -0.45D * (double)f10, 0.4D);
+                offset = new Vec3d((double)k * -0.36D * (double)f10, -0.2D * (double)f10, 0.4D);
                 offset = offset.rotatePitch(-(entityplayer.prevRotationPitch + (entityplayer.rotationPitch - entityplayer.prevRotationPitch) * partialTicks) * 0.017453292F);
                 offset = offset.rotateYaw(-(entityplayer.prevRotationYaw + (entityplayer.rotationYaw - entityplayer.prevRotationYaw) * partialTicks) * 0.017453292F);
                 offset = offset.rotateYaw(f8 * 0.5F);
@@ -91,7 +91,7 @@ public class RenderHook extends Render<EntityHook> {
             else
             {
 //                d5 = entityplayer.prevPosY + (double)entityplayer.getEyeHeight() + (entityplayer.posY - entityplayer.prevPosY) * (double)partialTicks - 0.45D;
-                offset = new Vec3d(- d1 * d2 - d0 * 0.8D, - 0.45D + (entityplayer.isSneaking() ? -0.1875D : 0.0D), - d0 * d2 + d1 * 0.8D);
+                offset = new Vec3d(- d1 * d2 - d0 * 0.1D, - 1.0D + (entityplayer.isSneaking() ? -0.1875D : 0.0D), - d0 * d2 + d1 * 0.1D);
             }
 
             GlStateManager.disableTexture2D();

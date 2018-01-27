@@ -25,9 +25,9 @@ public class ItemPack extends ItemArmor {
     @Override
     public void onArmorTick(World world, EntityPlayer player, ItemStack itemStack) {
         if(player.moveStrafing != 0f) {
-            world.spawnParticle(EnumParticleTypes.SMOKE_LARGE, player.posX, player.posY, player.posZ, 0, 0, 0);
+            world.spawnParticle(EnumParticleTypes.SMOKE_LARGE, player.posX, player.posY, player.posZ, player.motionX, player.motionY, player.motionZ);
 
-            System.out.println(Vec2d.distance(0,0, player.motionX, player.motionZ) );
+//            System.out.println(Vec2d.distance(0,0, player.motionX, player.motionZ) );
             if(Vec2d.distance(0,0, player.motionX, player.motionZ) > 2) return;
 
             double amount = 0.2f;
