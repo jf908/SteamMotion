@@ -35,13 +35,7 @@ public class EntityHook extends Entity {
     private static final DataParameter<Float> LENGTH = EntityDataManager.createKey(EntityHook.class, DataSerializers.FLOAT);
     private static final DataParameter<Byte> STATE = EntityDataManager.createKey(EntityHook.class, DataSerializers.BYTE);
 
-    private BlockPos fixedTo;
-
-    private Vec3d lastMotion;
-
-    private int ticksInAir;
-
-    private double skateAccel;
+    private double skateVel;
     private int skateDir;
 
     public EntityHook(World world) {
@@ -73,15 +67,6 @@ public class EntityHook extends Entity {
     }
 
     private void shoot() {
-        float yaw = shooter.rotationYaw % 360f;
-        if(yaw < 0f) {
-            yaw += 360f;
-        }
-        float pitch = shooter.rotationPitch % 360f;
-        if(pitch < 0f) {
-            pitch += 360f;
-        }
-
         setLocationAndAngles(shooter.posX, shooter.posY + shooter.getEyeHeight(), shooter.posZ, shooter.rotationYaw, shooter.rotationPitch);
         setPosition(posX, posY, posZ);
 
@@ -142,52 +127,60 @@ public class EntityHook extends Entity {
                         angle += 360f;
                     }
 
-                    skateAccel *= 0.9f;
+                    skateVel *= 0.9f;
+
+                    float skateAccel = 0.08f;
 
                     if(angle < 90f) {
                         if(world.getBlockState(new BlockPos(shooter.getPositionVector().addVector(0,2,1))).getBlock().equals(Blocks.IRON_BARS)) {
-                            skateAccel += 0.1f;
+                            if(skateDir == 0 && skateVel < 0) {
+                                skateVel *= -1;
+                            }
+
+                            skateVel += skateAccel;
                             skateDir = 1;
                         }
                     } else if(angle < 180f) {
                         if(world.getBlockState(new BlockPos(shooter.getPositionVector().addVector(-1,2,0))).getBlock().equals(Blocks.IRON_BARS)) {
-                            skateAccel -= 0.1f;
+                            if(skateDir == 1 && skateVel > 0) {
+                                skateVel *= -1;
+                            }
+
+                            skateVel -= skateAccel;
                             skateDir = 0;
                         }
                     } else if(angle < 270f) {
                         if(world.getBlockState(new BlockPos(shooter.getPositionVector().addVector(0,2,-1))).getBlock().equals(Blocks.IRON_BARS)) {
-                            skateAccel -= 0.1f;
+                            if(skateDir == 0 && skateVel > 0) {
+                                skateVel *= -1;
+                            }
+
+                            skateVel -= skateAccel;
                             skateDir = 1;
                         }
                     } else {
                         if(world.getBlockState(new BlockPos(shooter.getPositionVector().addVector(1,2,0))).getBlock().equals(Blocks.IRON_BARS)) {
-                            skateAccel += 0.1f;
+                            if(skateDir == 1 && skateVel < 0) {
+                                skateVel *= -1;
+                            }
+
+                            skateVel += skateAccel;
                             skateDir = 0;
                         }
                     }
 
-                    double maxAccel = 1f;
-                    skateAccel = Math.min(Math.max(skateAccel, -maxAccel), maxAccel);
+                    double maxVel = 1f;
+                    skateVel = Math.min(Math.max(skateVel, -maxVel), maxVel);
 
                     if(skateDir == 0) {
-                        shooter.motionX = skateAccel;
+                        shooter.motionX = skateVel;
                         shooter.motionY = 0;
                         shooter.motionZ = 0;
                     } else {
                         shooter.motionX = 0;
                         shooter.motionY = 0;
-                        shooter.motionZ = skateAccel;
+                        shooter.motionZ = skateVel;
                     }
-
-//                    if(angle > 180f) {
-//                        shooter.motionX = 1;
-//                        shooter.motionY = 0;
-//                        shooter.motionZ = 0;
-//                    } else {
-//                        shooter.motionX = -1;
-//                        shooter.motionY = 0;
-//                        shooter.motionZ = 0;
-//                    }
 
                     posX = shooter.posX;
                     posY = shooter.posY + 2;
@@ -207,15 +200,12 @@ public class EntityHook extends Entity {
     }
 
     private void handleFlying() {
-        ++this.ticksInAir;
         RayTraceResult raytraceresult = ProjectileHelper.forwardsRaycast(this, false, false, shooter);
 
         if(raytraceresult != null) {
             onImpact(raytraceresult);
             return;
         }
-
-//        if(world.isRemote) return;
 
         prevPosX = posX;
         prevPosY = posY;
@@ -236,46 +226,14 @@ public class EntityHook extends Entity {
 
     private void handlerPlayerMove() {
         if(shooter.getPositionVector().distanceTo(getPositionVector()) >= getLength()) {
-//            Vec3d vec = new Vec3d(shooter.motionX, shooter.motionY, shooter.motionZ);
-
-//            Vec3d newMotion = vec.crossProduct(shooter.getPositionVector().subtract(getPositionVector()).normalize());
-//
-//            if(newMotion.lengthVector() > 1.0) {
-//                newMotion.normalize();
-//            }
-
-//            shooter.motionX = newMotion.x;
-//            shooter.motionY = newMotion.y;
-//            shooter.motionZ = newMotion.z;
-
-//            shooter.motionX = - vec.x;
-//            shooter.motionY = - vec.y;
-//            shooter.motionZ = - vec.z;
-
-//            Vec3d normal = shooter.getPositionVector().subtract(getPositionVector()).normalize();
-//
-//            Vec3d gravity = new Vec3d(0, -1f, 0);
-//
-//            Vec3d point = shooter.getPositionVector().add(gravity).subtract(normal.scale(gravity.dotProduct(normal)));
-//            Vec3d motion = point.subtract(shooter.getPositionVector());
-//            shooter.motionX = lastMotion.x + motion.x;
-//            shooter.motionY = lastMotion.y + motion.y;
-//            shooter.motionZ = lastMotion.z + motion.z;
 
             double amount = shooter.getPositionVector().distanceTo(getPositionVector()) - getLength();
-//            amount *= 0.15; // * Math.sqrt(getLength());
             amount *= 0.1;
             Vec3d motion = getPositionVector().subtract(shooter.getPositionVector()).normalize().scale(amount);
 
             shooter.motionX += motion.x;
             shooter.motionY += motion.y;
             shooter.motionZ += motion.z;
-
-            lastMotion = motion;
-        } else {
-//            shooter.motionX = lastMotion.x;
-//            shooter.motionY = lastMotion.y;
-//            shooter.motionZ = lastMotion.z;
         }
 
         if(!shooter.onGround) {
@@ -285,24 +243,9 @@ public class EntityHook extends Entity {
         }
     }
 
-    private void movePlayerTowards() {
-        EntityLivingBase thrower = getShooter();
-
-        Vec3d pos = getPositionVector();
-        pos = pos.subtract(thrower.getPositionVector());
-        pos = pos.normalize();
-
-        thrower.motionX = pos.x;
-        thrower.motionY = pos.y;
-        thrower.motionZ = pos.z;
-    }
-
     public void onImpact(RayTraceResult result) {
         if(result.typeOfHit == RayTraceResult.Type.BLOCK) {
             resetMotion();
-//            prevPosX = posX;
-//            prevPosY = posY;
-//            prevPosZ = posZ;
 
             setPosition(result.hitVec.x, result.hitVec.y, result.hitVec.z);
 
