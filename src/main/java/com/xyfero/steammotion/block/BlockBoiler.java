@@ -3,6 +3,7 @@ package com.xyfero.steammotion.block;
 import net.minecraft.block.BlockContainer;
 import net.minecraft.block.material.Material;
 import net.minecraft.block.state.IBlockState;
+import net.minecraft.creativetab.CreativeTabs;
 import net.minecraft.init.Blocks;
 import net.minecraft.inventory.InventoryHelper;
 import net.minecraft.item.Item;
@@ -15,12 +16,13 @@ import net.minecraft.world.World;
 import java.util.Random;
 
 public class BlockBoiler extends BlockContainer {
-    private final boolean isBurning;
     private static boolean keepInventory;
 
-    protected BlockBoiler(boolean isBurning) {
+    protected BlockBoiler() {
         super(Material.IRON);
-        this.isBurning = isBurning;
+
+        SteamMotionBlock.setBlockName(this, "boiler");
+        setCreativeTab(CreativeTabs.DECORATIONS);
     }
 
     public Item getItemDropped(IBlockState state, Random rand, int fortune) {
