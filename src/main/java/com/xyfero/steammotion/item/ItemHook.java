@@ -3,11 +3,9 @@ package com.xyfero.steammotion.item;
 import com.xyfero.steammotion.entity.EntityHook;
 import net.minecraft.entity.EntityLivingBase;
 import net.minecraft.entity.player.EntityPlayer;
+import net.minecraft.init.SoundEvents;
 import net.minecraft.item.ItemStack;
-import net.minecraft.util.ActionResult;
-import net.minecraft.util.EnumActionResult;
-import net.minecraft.util.EnumHand;
-import net.minecraft.util.EnumParticleTypes;
+import net.minecraft.util.*;
 import net.minecraft.world.World;
 
 public class ItemHook extends SteamMotionItem {
@@ -15,6 +13,7 @@ public class ItemHook extends SteamMotionItem {
 
     public ItemHook() {
         super("steam_hook");
+        maxStackSize = 1;
     }
 
     private boolean fakeSwing;
@@ -31,6 +30,8 @@ public class ItemHook extends SteamMotionItem {
                 world.spawnEntity(hookEntity);
 
                 itemstack.setItemDamage(1);
+                world.playSound((EntityPlayer)null, player.posX, player.posY, player.posZ, SoundEvents.ENTITY_BOBBER_THROW, SoundCategory.NEUTRAL, 0.5F, 0.4F / (itemRand.nextFloat() * 0.4F + 0.8F));
+
             }
         }
 

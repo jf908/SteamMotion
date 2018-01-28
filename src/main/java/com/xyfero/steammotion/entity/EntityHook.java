@@ -102,11 +102,12 @@ public class EntityHook extends Entity {
                 break;
             case FIXED:
                 if(!world.isRemote && !posUpdated) {
+                    // Force Update Position
                     ((WorldServer)world).getEntityTracker().sendToTrackingAndSelf(this, new SPacketEntityTeleport(this));
                     posUpdated = true;
                 }
                 if(shooter.getPositionVector().distanceTo(getPositionVector()) < 3) {
-                    if(world.getBlockState(getPosition()).getBlock().equals(Blocks.IRON_BARS)) {
+                    if(world.getBlockState(getPosition()).getBlock().equals(Blocks.IRON_BARS) || world.getBlockState(shooter.getPosition()).getBlock().equals(Blocks.IRON_BARS)) {
                         setState(State.SKATING);
                         BlockPos bPos = getPosition();
                         shooter.setPositionAndUpdate(bPos.getX()+0.5, bPos.getY()-2, bPos.getZ()+0.5);

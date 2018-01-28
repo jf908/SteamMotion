@@ -1,0 +1,35 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "pattern": [
+    " I ",
+    "GSG",
+    "GDG"
+  ],
+  "key": {
+    "I": {
+      "item": "minecraft:iron_ingot",
+      "data": 0,
+      "count": 1
+    },
+    "G": {
+      "item": "minecraft:gold_ingot",
+      "data": 0,
+      "count": 1
+    },
+    "S": {
+      "item": "minecraft:string",
+      "data": 0,
+      "count": 1
+    },
+    "D": {
+      "item": "minecraft:diamond",
+      "data": 0,
+      "count": 1
+    }
+  },
+  "result": {
+    "item": "steammotion:steam_hook",
+    "data": 0,
+    "count": 1
+  }
+}
