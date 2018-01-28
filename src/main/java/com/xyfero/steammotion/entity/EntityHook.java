@@ -196,8 +196,6 @@ public class EntityHook extends Entity {
                 }
                 break;
         }
-
-        super.onUpdate();
     }
 
     private void handleFlying() {
@@ -248,7 +246,8 @@ public class EntityHook extends Entity {
         if(result.typeOfHit == RayTraceResult.Type.BLOCK) {
             resetMotion();
 
-            setPosition(result.hitVec.x, result.hitVec.y, result.hitVec.z);
+            Vec3d offset = getPositionVector().subtract(result.hitVec).normalize().scale(0.001);
+            setPosition(result.hitVec.x + offset.x, result.hitVec.y + offset.y, result.hitVec.z + offset.z);
 
             if(!world.isRemote) {
                 setState(State.FIXED);
