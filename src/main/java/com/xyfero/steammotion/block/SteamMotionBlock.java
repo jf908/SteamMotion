@@ -2,12 +2,14 @@ package com.xyfero.steammotion.block;
 
 import com.google.common.eventbus.Subscribe;
 import com.xyfero.steammotion.SteamMotion;
+import com.xyfero.steammotion.tileentity.TileEntityBoiler;
 import net.minecraft.block.Block;
 import net.minecraft.item.Item;
 import net.minecraft.item.ItemBlock;
 import net.minecraftforge.event.RegistryEvent;
 import net.minecraftforge.fml.common.Mod;
 import net.minecraftforge.fml.common.eventhandler.SubscribeEvent;
+import net.minecraftforge.fml.common.registry.GameRegistry;
 import net.minecraftforge.registries.IForgeRegistry;
 
 public class SteamMotionBlock {
@@ -26,6 +28,8 @@ public class SteamMotionBlock {
             final IForgeRegistry<Block> registry = event.getRegistry();
 
             registry.register(BLOCK_BOILER);
+
+            GameRegistry.registerTileEntity(TileEntityBoiler.class, SteamMotion.MODID + "_boiler");
         }
 
         @SubscribeEvent

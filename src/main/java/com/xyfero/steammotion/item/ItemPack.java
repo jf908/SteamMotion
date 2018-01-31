@@ -25,6 +25,7 @@ public class ItemPack extends ItemArmor {
 
     public ItemPack() {
         super(ArmorMaterial.IRON, -1, EntityEquipmentSlot.CHEST);
+        this.setMaxDamage(15000);
 
         final String name = "steam_pack";
         setRegistryName(SteamMotion.MODID, name);
