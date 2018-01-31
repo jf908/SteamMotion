@@ -1,17 +1,19 @@
 package com.xyfero.steammotion.tileentity;
 
 import com.xyfero.steammotion.item.ItemPack;
+import net.minecraft.block.state.IBlockState;
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.inventory.ISidedInventory;
 import net.minecraft.inventory.ItemStackHelper;
-import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
 import net.minecraft.nbt.NBTTagCompound;
+import net.minecraft.network.NetworkManager;
+import net.minecraft.network.play.server.SPacketUpdateTileEntity;
 import net.minecraft.tileentity.TileEntity;
 import net.minecraft.util.EnumFacing;
+import net.minecraft.util.EnumParticleTypes;
 import net.minecraft.util.ITickable;
 import net.minecraft.util.NonNullList;
-import org.lwjgl.Sys;
 
 public class TileEntityBoiler extends TileEntity implements ITickable, ISidedInventory {
     private int burnTime;
@@ -47,7 +49,6 @@ public class TileEntityBoiler extends TileEntity implements ITickable, ISidedInv
      */
     public boolean putJetpack(ItemStack itemstack) {
         if(itemStacks.get(0).isEmpty()) {
-            System.out.println(itemstack);
             setInventorySlotContents(0, itemstack);
             markDirty();
             return true;
@@ -55,13 +56,58 @@ public class TileEntityBoiler extends TileEntity implements ITickable, ISidedInv
         return false;
     }
 
+    private final int amount = 10;
+
     public void update() {
         if(!world.isRemote) {
             ItemStack itemstack = itemStacks.get(0);
             if(!itemstack.isEmpty() && burnTime > 0 && itemstack.getMetadata() > 0) {
-                itemStacks.get(0).setItemDamage(itemStacks.get(0).getMetadata() - 1);
+                ItemStack slot = itemStacks.get(0);
+
+                if((int)(double)100 * (slot.getMaxDamage() - slot.getMetadata() - amount)/slot.getMaxDamage() != (int)(double)100 * (slot.getMaxDamage() - slot.getMetadata())/slot.getMaxDamage()) {
+                    needsUpdate();
+                }
+
+
+                burnTime--;
+                if(slot.getMetadata() - amount < 0) {
+                    slot.setItemDamage(0);
+                } else {
+                    slot.setItemDamage(slot.getMetadata() - amount);
+                }
             }
         }
+    }
+
+    public void addBurnTime(int time) {
+        burnTime += time;
+        markDirty();
+    }
+
+    @Override
+    public NBTTagCompound getUpdateTag() {
+        // getUpdateTag() is called whenever the chunkdata is sent to the
+        // client. In contrast getUpdatePacket() is called when the tile entity
+        // itself wants to sync to the client. In many cases you want to send
+        // over the same information in getUpdateTag() as in getUpdatePacket().
+        return writeToNBT(new NBTTagCompound());
+    }
+
+    @Override
+    public SPacketUpdateTileEntity getUpdatePacket() {
+        // Prepare a packet for syncing our TE to the client. Since we only have to sync the stack
+        // and that's all we have we just write our entire NBT here. If you have a complex
+        // tile entity that doesn't need to have all information on the client you can write
+        // a more optimal NBT here.
+        NBTTagCompound nbtTag = new NBTTagCompound();
+        this.writeToNBT(nbtTag);
+        return new SPacketUpdateTileEntity(getPos(), 1, nbtTag);
+    }
+
+    @Override
+    public void onDataPacket(NetworkManager net, SPacketUpdateTileEntity packet) {
+        // Here we get the packet from the server and read it into our client side tile entity
+        this.readFromNBT(packet.getNbtCompound());
     }
 
     /**
@@ -118,6 +164,7 @@ public class TileEntityBoiler extends TileEntity implements ITickable, ISidedInv
      * Removes up to a specified number of items from an inventory slot and returns them in a new stack.
      */
     public ItemStack decrStackSize(int index, int count) {
+        needsUpdate();
         return ItemStackHelper.getAndSplit(itemStacks, index, count);
     }
 
@@ -132,6 +179,7 @@ public class TileEntityBoiler extends TileEntity implements ITickable, ISidedInv
      * Sets the given item stack to the specified slot in the inventory (can be crafting or armor sections).
      */
     public void setInventorySlotContents(int index, ItemStack stack) {
+        needsUpdate();
         itemStacks.set(index, stack);
     }
 
@@ -204,5 +252,12 @@ public class TileEntityBoiler extends TileEntity implements ITickable, ISidedInv
      */
     public boolean hasCustomName() {
         return false;
+    }
+
+    private void needsUpdate() {
+        if (world != null) {
+            IBlockState state = world.getBlockState(getPos());
+            world.notifyBlockUpdate(getPos(), state, state, 3);
+        }
     }
 }

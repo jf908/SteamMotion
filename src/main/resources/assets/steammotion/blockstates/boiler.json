@@ -1,0 +1,13 @@
+{
+  "forge_marker": 1,
+  "defaults": {
+    "model": "steammotion:boiler",
+    "textures": {"0": "minecraft:blocks/iron_block"}
+  },
+  "variants": {
+    "normal": {
+      "model": "steammotion:boiler",
+      "textures": {"0": "minecraft:blocks/iron_block"}
+    }
+  }
+}

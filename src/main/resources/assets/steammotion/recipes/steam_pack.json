@@ -1,7 +1,7 @@
 {
   "type": "minecraft:crafting_shaped",
   "pattern": [
-    " G ",
+    "LGL",
     "IPI",
     "GIG"
   ],
@@ -41,11 +41,16 @@
         "item": "minecraft:planks",
         "data": 5
       }
-    ]
+    ],
+    "L": {
+      "item": "minecraft:leather",
+      "data": 0,
+      "count": 1
+    }
   },
   "result": {
     "item": "steammotion:steam_pack",
-    "data": 0,
+    "data": 15000,
     "count": 1
   }
 }

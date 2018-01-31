@@ -1,11 +1,14 @@
 package com.xyfero.steammotion.entity;
 
+import com.sun.javafx.geom.Vec2d;
 import com.xyfero.steammotion.item.ItemHook;
+import com.xyfero.steammotion.item.ItemPack;
 import net.minecraft.block.Block;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.EntityLivingBase;
 import net.minecraft.entity.projectile.ProjectileHelper;
 import net.minecraft.init.Blocks;
+import net.minecraft.inventory.EntityEquipmentSlot;
 import net.minecraft.item.ItemStack;
 import net.minecraft.nbt.NBTTagCompound;
 import net.minecraft.nbt.NBTTagList;
@@ -107,14 +110,16 @@ public class EntityHook extends Entity {
                     posUpdated = true;
                 }
                 if(shooter.getPositionVector().distanceTo(getPositionVector()) < 3) {
-                    if(world.getBlockState(getPosition()).getBlock().equals(Blocks.IRON_BARS) || world.getBlockState(shooter.getPosition()).getBlock().equals(Blocks.IRON_BARS)) {
-                        setState(State.SKATING);
-                        BlockPos bPos = getPosition();
-                        shooter.setPositionAndUpdate(bPos.getX()+0.5, bPos.getY()-2, bPos.getZ()+0.5);
-                        shooter.motionX = 0;
-                        shooter.motionY = 0;
-                        shooter.motionZ = 0;
-                        return;
+                    for(int i=-1; i<3; i++) {
+                        if(world.getBlockState(shooter.getPosition().add(0, i, 0)).getBlock().equals(Blocks.IRON_BARS)) {
+                            setState(State.SKATING);
+                            BlockPos bPos = getPosition();
+                            shooter.motionX = 0;
+                            shooter.motionY = 0;
+                            shooter.motionZ = 0;
+                            shooter.setPositionAndUpdate(bPos.getX()+0.5, bPos.getY()-2, bPos.getZ()+0.5);
+                            return;
+                        }
                     }
                 }
 
@@ -195,6 +200,30 @@ public class EntityHook extends Entity {
                     setDead();
                 }
                 break;
+        }
+
+        EntityLivingBase player = shooter;
+        ItemStack chest = player.getItemStackFromSlot(EntityEquipmentSlot.CHEST);
+        if(chest.getItem() instanceof ItemPack && player.moveStrafing != 0f && chest.getMetadata() != chest.getMaxDamage()) {
+            world.spawnParticle(EnumParticleTypes.SMOKE_LARGE, player.posX, player.posY + 1.5, player.posZ, player.motionX, player.motionY, player.motionZ);
+//            if(timer == 0) {
+//                world.playSound(player, player.posX, player.posY, player.posZ, SoundEvents.ENTITY_GENERIC_EXTINGUISH_FIRE, SoundCategory.PLAYERS,1F, 0.4F / (itemRand.nextFloat() * 0.4F + 0.8F));
+//                world.playSound(player, player.posX, player.posY, player.posZ, SoundEvents.BLOCK_FIRE_AMBIENT, SoundCategory.PLAYERS,5F, 0.4F / (itemRand.nextFloat() * 0.4F + 0.8F));
+//                timer = 2;
+//            } else {
+//                timer--;
+//            }
+
+            if(Vec2d.distance(0,0, player.motionX, player.motionZ) > 2) return;
+
+            chest.setItemDamage(chest.getMetadata() + 1);
+
+            double amount = 0.2f;
+            float direction = player.rotationYaw;
+            direction += player.moveStrafing * 90f;
+            player.motionX -= Math.sin(Math.toRadians(-direction)) * amount;
+            player.motionY += 0.02f;
+            player.motionZ -= Math.cos(Math.toRadians(-direction)) * amount;
         }
     }
 

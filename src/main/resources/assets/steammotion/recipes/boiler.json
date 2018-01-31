@@ -1,0 +1,29 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "pattern": [
+    " B ",
+    "IWI"
+  ],
+  "key": {
+    "B": {
+      "item": "minecraft:iron_block",
+      "data": 0,
+      "count": 1
+    },
+    "I": {
+      "item": "minecraft:iron_ingot",
+      "data": 0,
+      "count": 1
+    },
+    "W": {
+      "item": "minecraft:water_bucket",
+      "data": 0,
+      "count": 1
+    }
+  },
+  "result": {
+    "item": "steammotion:boiler",
+    "data": 0,
+    "count": 1
+  }
+}
