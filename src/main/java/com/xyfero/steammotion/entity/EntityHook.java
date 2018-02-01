@@ -214,7 +214,7 @@ public class EntityHook extends Entity {
 //                timer--;
 //            }
 
-            if(Vec2d.distance(0,0, player.motionX, player.motionZ) > 2) return;
+            if(Math.sqrt(player.motionX*player.motionX + player.motionZ*player.motionZ) > 2) return;
 
             chest.setItemDamage(chest.getMetadata() + 1);
 
